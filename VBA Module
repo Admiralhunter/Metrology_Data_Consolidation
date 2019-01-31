@@ -1,0 +1,179 @@
+Sub compiledata()
+    Dim partfolder As String
+    Dim wb As Workbook
+    Dim HL As Hyperlink
+    Dim StrFile As String
+    Dim filelocation As String
+    Dim job As String
+    Dim jobnumber() As String
+    Dim name As String
+    Dim formatoffile As Integer
+    Dim lRow As Long
+    Dim i As Integer
+    Dim j As Integer
+    Dim x As Integer
+    Dim d As Integer
+    Dim sum As Long
+    Dim rangeofavg() As String
+    
+    
+    d = 0
+    j = 2
+    'Application.ScreenUpdating = True
+    'Application.Calculation = xlCalculationAutomatic
+    'Application.DisplayStatusBar = True
+    'Application.EnableEvents = True
+
+    
+    
+    'this ensures all opened excel files don't run macros. I'm looking at you dan.
+    Application.AutomationSecurity = msoAutomationSecurityForceDisable
+    
+    'Optimization code. Can disable if needed, but will probably be slower
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.DisplayStatusBar = False
+    Application.EnableEvents = False
+    
+    'this will loop through all the jobs on dan's getfolderlocation workbook
+    lRow = Workbooks("GetFolderLocations.xlsm").Worksheets(1).Cells(Rows.Count, 1).End(xlUp).Row
+    
+    For i = 2 To lRow
+    
+        'uses Dan's macro to locate all job's for a part
+        partfolder = Workbooks("GetFolderLocations.xlsm").Worksheets(1).Cells(i, 2).Value
+        job = Workbooks("GetFolderLocations.xlsm").Worksheets(1).Cells(i, 1).Value
+        jobnumber = Split(job, "-")
+    
+        
+        'creates wildcard to locate all .xlsx files with metro data
+        filelocation = partfolder & "\*MTF-GEBIR*.xls?"
+        'filelocation = partfolder & "\*MTF-GBIR*.xls?"
+        
+        'loops through directory of jobs and opens each excel file
+        StrFile = Dir(filelocation)
+
+        Do While Len(StrFile) > 0
+            name = StrFile
+            Workbooks.Open (partfolder & "\" & StrFile)
+            StrFile = Dir
+            'determines if format of After MMP page is the original or modified version. This is necessary for the correct selection
+            'of cells for the functions
+            If Workbooks(name).Worksheets(2).Range("A23").Value = "Blade" Then
+                formatoffile = 0
+            Else
+                formatoffile = 1
+            End If
+            
+            'records format of record as well as specific job number
+            Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 10).Value = formatoffile
+            Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 1).Value = jobnumber(0)
+            Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 2).Value = jobnumber(1)
+            
+            Workbooks(name).Worksheets("After MMP").Activate
+            Select Case formatoffile
+                Case 0
+                    'this is the format of the After MMP page originally
+                    'calculates different averages
+                    'for loop checks to ensure each column of data isn't void of values, else skips that column
+                    rangeofavg = Split("B26:B31,D26:D31,J26:J31,L26:L31", ",")
+                    For x = 0 To 3
+                        If Workbooks(name).Worksheets("After MMP").Application.sum(Range(rangeofavg(x))) <> 0 Then
+                            sum = Workbooks(name).Worksheets("After MMP").Application.sum(Range(rangeofavg(x)))
+                            d = d + 1
+                        End If
+                    Next x
+                    
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 5).Value = sum / (d * 6)
+                    sum = 0
+                    d = 0
+                    
+                    'for loop checks to ensure each column of data isn't void of values, else skips that column
+                    rangeofavg = Split("B37:B42,D37:D42,H37:H42,J37:J42", ",")
+                    For x = 0 To 3
+                        If Workbooks(name).Worksheets("After MMP").Application.sum(Range(rangeofavg(x))) <> 0 Then
+                            sum = Workbooks(name).Worksheets("After MMP").Application.sum(Range(rangeofavg(x)))
+                            d = d + 1
+                        End If
+                    Next x
+                    
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 8).Value = sum / (d * 6)
+                    sum = 0
+                    d = 0
+                    
+                    
+                    
+                    'Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 5).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Average(Range("B26:B31,D26:D31,J26:J31,L26:L31"))
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 6).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Max(Range("B26:B31,D26:D31,J26:J31,L26:L31"))
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 7).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Max(Range("F26:F31,H26:H31,N26:N31,P26:P31"))
+                    'Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 8).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Average(Range("B37:B42,D37:D42,H37:H42,J37:J42"))
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 9).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Max(Range("B37:B42,D37:D42,H37:H42,J37:J42"))
+                    'gets the stage and date of the job
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 4).Value = Workbooks(name).Worksheets("After MMP").Range("O3").Value
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 3).Value = Workbooks(name).Worksheets("After MMP").Range("G8").Value
+                    
+                Case 1
+                    'calculates different averages
+                    'for loop checks to ensure each column of data isn't void of values, else skips that column
+                    rangeofavg = Split("C26:C31,E26:E31,K26:K31,M26:M31", ",")
+                    For x = 0 To 3
+                        If Workbooks(name).Worksheets("After MMP").Application.sum(Range(rangeofavg(x))) <> 0 Then
+                            sum = Workbooks(name).Worksheets("After MMP").Application.sum(Range(rangeofavg(x)))
+                            d = d + 1
+                        End If
+                    Next x
+                    
+                    'can't divide by zero
+                    If d = 0 Then
+                        Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 5).Value = "N/A"
+                    Else
+                        Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 5).Value = sum / (d * 6)
+                    End If
+                    
+                    sum = 0
+                    d = 0
+                    
+                    'for loop checks to ensure each column of data isn't void of values, else skips that column
+                    rangeofavg = Split("B37:B42,D37:D42,H37:H42,J37:J42", ",")
+                    For x = 0 To 3
+                        If Workbooks(name).Worksheets("After MMP").Application.sum(Range(rangeofavg(x))) <> 0 Then
+                            sum = Workbooks(name).Worksheets("After MMP").Application.sum(Range(rangeofavg(x)))
+                            d = d + 1
+                        End If
+                    Next x
+                    
+                    If d = 0 Then
+                        Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 8).Value = "N/A"
+                    Else
+                        Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 8).Value = sum / (d * 6)
+                    End If
+                    
+                    sum = 0
+                    d = 0
+                    
+                    'Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 5).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Average(Range("C26:C31,E26:E31,K26:K31,M26:M31"))
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 6).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Max(Range("C26:C31,E26:E31,K26:K31,M26:M31"))
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 7).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Max(Range("G26:G31,I26:I31,O26:O31,Q26:Q31"))
+                    'Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 8).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Average(Range("B37:B42,D37:D42,H37:H42,J37:J42"))
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 9).Value = Workbooks(name).Worksheets("After MMP").Application.WorksheetFunction.Max(Range("B37:B42,D37:D42,H37:H42,J37:J42"))
+                    'gets the stage and date of the job
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 4).Value = Workbooks(name).Worksheets("After MMP").Range("P3").Value
+                    Workbooks("Blisk Compiled Data.xlsm").Worksheets(1).Cells(j, 3).Value = Workbooks(name).Worksheets("After MMP").Range("H8").Value
+            End Select
+            
+
+            
+            'close workbook after done and ensure no changes are made
+            Workbooks(name).Close SaveChanges:=False
+            
+            j = j + 1
+        Loop
+        
+    Next i
+    
+    'Enables the functions that speed up macro
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.DisplayStatusBar = True
+    Application.EnableEvents = True
+End Sub
